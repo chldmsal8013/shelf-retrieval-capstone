@@ -6,7 +6,7 @@
 import gymnasium as gym
 
 from . import agents
-
+from . import config
 ##
 # Register Gym environments.
 ##

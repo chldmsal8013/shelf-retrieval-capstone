@@ -1,0 +1,140 @@
+from isaaclab.actuators import ImplicitActuatorCfg
+from isaaclab.assets import ArticulationCfg, RigidObjectCfg
+from isaaclab.sensors import FrameTransformerCfg
+from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
+from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, ArticulationRootPropertiesCfg
+from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
+from isaaclab.utils import configclass
+from isaaclab.markers.config import FRAME_MARKER_CFG
+import isaaclab.sim as sim_utils
+from ... import mdp
+from ...shelf_retrieval_env_cfg import ShelfRetrievalEnvCfg
+
+
+UR5_ROBOTIQ_CFG = ArticulationCfg(
+    spawn=UsdFileCfg(
+        usd_path="/home/choi/ur5_robotiq_2f85.usd",
+        activate_contact_sensors=False,  # contact sensor 안 쓰므로 끔
+        rigid_props=RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            max_depenetration_velocity=5.0,
+        ),
+        articulation_props=ArticulationRootPropertiesCfg(
+            enabled_self_collisions=False,
+            solver_position_iteration_count=16,
+            solver_velocity_iteration_count=2,
+        ),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.0),
+        joint_pos={
+            "shoulder_pan_joint": 0.0,
+            "shoulder_lift_joint": -1.712,
+            "elbow_joint": 1.712,
+            "wrist_1_joint": -1.571,
+            "wrist_2_joint": -1.571,
+            "wrist_3_joint": 0.0,
+            "finger_joint": 0.0,
+            "right_outer_knuckle_joint": 0.0,
+            "right_inner_finger_joint": 0.0,
+            "right_inner_finger_knuckle_joint": 0.0,
+            "left_inner_finger_knuckle_joint": 0.0,
+            "left_inner_finger_joint": 0.0,
+        },
+    ),
+    actuators={
+        "arm": ImplicitActuatorCfg(
+            joint_names_expr=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
+                              "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"],
+            stiffness=400.0,
+            damping=60.0,
+        ),
+        "gripper_drive": ImplicitActuatorCfg(
+            joint_names_expr=["finger_joint"],
+            effort_limit_sim=1650.0,
+            velocity_limit_sim=10.0,
+            stiffness=17.0,
+            damping=0.2,
+        ),
+        "gripper_finger": ImplicitActuatorCfg(
+            joint_names_expr=["right_inner_finger_joint", "left_inner_finger_joint"],
+            effort_limit_sim=50.0,
+            velocity_limit_sim=10.0,
+            stiffness=0.2,
+            damping=0.001,
+        ),
+        "gripper_passive": ImplicitActuatorCfg(
+            joint_names_expr=["right_outer_knuckle_joint",
+                              "right_inner_finger_knuckle_joint",
+                              "left_inner_finger_knuckle_joint"],
+            effort_limit_sim=1.0,
+            velocity_limit_sim=10.0,
+            stiffness=0.0,
+            damping=0.0,
+        ),
+    },
+)
+
+
+@configclass
+class UR5ShelfRetrievalEnvCfg(ShelfRetrievalEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.curriculum = None
+
+        self.scene.robot = UR5_ROBOTIQ_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+
+        self.actions.arm_action = mdp.JointPositionActionCfg(
+            asset_name="robot",
+            joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
+                         "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"],
+            scale=0.5,
+            use_default_offset=True,
+        )
+        self.actions.gripper_action = mdp.JointPositionActionCfg(
+            asset_name="robot",
+            joint_names=["finger_joint"],
+            scale=0.4,
+            use_default_offset=False,
+            offset=0.4,
+        )
+
+        self.commands.object_pose.body_name = "wrist_3_link"
+
+        marker_cfg = FRAME_MARKER_CFG.copy()
+        marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
+        marker_cfg.prim_path = "/Visuals/FrameTransformer"
+
+        self.scene.ee_frame = FrameTransformerCfg(
+            prim_path="{ENV_REGEX_NS}/Robot/ur5/base_link",
+            debug_vis=False,
+            visualizer_cfg=marker_cfg,
+            target_frames=[
+                FrameTransformerCfg.FrameCfg(
+                    prim_path="{ENV_REGEX_NS}/Robot/ur5/wrist_3_link",
+                    name="end_effector",
+                    offset=OffsetCfg(pos=[0.0, 0.0, 0.13]),
+                ),
+            ],
+        )
+
+        # 물체는 씬에서 이미 우리가 정한 크기/위치(reset 범위)로 정의했으니, 여기선 spawn만 지정
+        self.scene.object = RigidObjectCfg(
+            prim_path="{ENV_REGEX_NS}/Object",
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.75, 0.0, 0.26], rot=[1, 0, 0, 0]),
+            spawn=sim_utils.CuboidCfg(
+                size=(0.055, 0.055, 0.12),
+                mass_props=sim_utils.MassPropertiesCfg(mass=0.15),
+                rigid_props=RigidBodyPropertiesCfg(
+                    solver_position_iteration_count=16,
+                    solver_velocity_iteration_count=1,
+                    max_angular_velocity=1000.0,
+                    max_linear_velocity=1000.0,
+                    max_depenetration_velocity=5.0,
+                    disable_gravity=False,
+                ),
+                collision_props=sim_utils.CollisionPropertiesCfg(),
+                physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=0.9),
+            ),
+        )
