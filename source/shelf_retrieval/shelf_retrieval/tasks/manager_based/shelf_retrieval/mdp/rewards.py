@@ -256,36 +256,3 @@ def object_ee_distance_target_aware(
     target_dist = torch.where(target_color == 0, object_dist, distractor_dist)
 
     return 1 - torch.tanh(target_dist / std)
-
-def home_pose_after_lift(
-    env: ManagerBasedRLEnv,
-    minimal_height: float,
-    std: float,
-    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
-    distractor_cfg: SceneEntityCfg = SceneEntityCfg("distractor"),
-    robot_cfg: SceneEntityCfg = SceneEntityCfg("robot", joint_names=[
-        "shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint",
-        "wrist_1_joint", "wrist_2_joint", "wrist_3_joint",
-    ]),
-) -> torch.Tensor:
-    """큐브가 들린 상태일 때만, arm joint가 초기 자세에 가까울수록 보상."""
-    target_color = env.command_manager.get_command("target_color")
-    object: RigidObject = env.scene[object_cfg.name]
-    distractor: RigidObject = env.scene[distractor_cfg.name]
-    robot: Articulation = env.scene[robot_cfg.name]
-
-    object_height = object.data.root_pos_w[:, 2]
-    distractor_height = distractor.data.root_pos_w[:, 2]
-    target_height = torch.where(target_color == 0, object_height, distractor_height)
-    is_lifted = target_height > minimal_height  # (num_envs,) 불리언
-
-    # 초기 자세 값 (순서: shoulder_pan, shoulder_lift, elbow, wrist_1, wrist_2, wrist_3)
-    home_pose = torch.tensor(
-        [0.0, -1.712, 1.712, -1.571, -1.571, 0.0], device=env.device
-    )
-    current_pos = robot.data.joint_pos[:, robot_cfg.joint_ids]  # (num_envs, 6)
-
-    pose_error = torch.norm(current_pos - home_pose, dim=-1)
-    reward = (1.0 - torch.tanh(pose_error / std)) * is_lifted.float()
-
-    return reward
