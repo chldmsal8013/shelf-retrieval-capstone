@@ -257,10 +257,6 @@ class ShelfRetrievalEnvCfg(ManagerBasedRLEnvCfg):
 
     def __post_init__(self):
         """Post initialization."""
-        # 카메라 시점 고정 (선반 개구부, 대각선 각도)
-        self.viewer.eye = (-0.90962, 1.15711, 1.13737)
-        self.viewer.lookat = (0.65, 0.0, 0.3)
-
         # general settings
         self.decimation = 2
         self.episode_length_s = 5.0
