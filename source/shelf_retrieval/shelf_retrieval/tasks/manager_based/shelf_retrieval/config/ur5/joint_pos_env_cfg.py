@@ -7,6 +7,9 @@ from isaaclab.sim.spawners.from_files.from_files_cfg import UsdFileCfg
 from isaaclab.utils import configclass
 from isaaclab.markers.config import FRAME_MARKER_CFG
 import isaaclab.sim as sim_utils
+from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
+
+FACTORY_ASSET_DIR = f"{ISAACLAB_NUCLEUS_DIR}/Factory"
 from ... import mdp
 from ...shelf_retrieval_env_cfg import ShelfRetrievalEnvCfg
 
@@ -123,18 +126,19 @@ class UR5ShelfRetrievalEnvCfg(ShelfRetrievalEnvCfg):
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
             init_state=RigidObjectCfg.InitialStateCfg(pos=[0.75, 0.0, 0.26], rot=[1, 0, 0, 0]),
-            spawn=sim_utils.CuboidCfg(
-                size=(0.055, 0.055, 0.12),
-                mass_props=sim_utils.MassPropertiesCfg(mass=0.15),
+            spawn=sim_utils.UsdFileCfg(
+                usd_path=f"{FACTORY_ASSET_DIR}/factory_gear_medium.usd",
+                articulation_props=sim_utils.ArticulationRootPropertiesCfg(articulation_enabled=False),
                 rigid_props=RigidBodyPropertiesCfg(
-                    solver_position_iteration_count=16,
+                    solver_position_iteration_count=192,
                     solver_velocity_iteration_count=1,
-                    max_angular_velocity=1000.0,
+                    max_angular_velocity=3666.0,
                     max_linear_velocity=1000.0,
                     max_depenetration_velocity=5.0,
                     disable_gravity=False,
+                    enable_gyroscopic_forces=True,
                 ),
-                collision_props=sim_utils.CollisionPropertiesCfg(),
-                physics_material=sim_utils.RigidBodyMaterialCfg(static_friction=1.0, dynamic_friction=0.9),
+                mass_props=sim_utils.MassPropertiesCfg(mass=0.012),
+                collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.005, rest_offset=0.0),
             ),
         )
