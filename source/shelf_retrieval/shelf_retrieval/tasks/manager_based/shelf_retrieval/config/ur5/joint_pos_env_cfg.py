@@ -142,3 +142,33 @@ class UR5ShelfRetrievalEnvCfg(ShelfRetrievalEnvCfg):
                 collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.005, rest_offset=0.0),
             ),
         )
+
+
+@configclass
+class UR5ShelfRetrievalPregraspEnvCfg(UR5ShelfRetrievalEnvCfg):
+    """Step 2: identical to the home-reset env; ONLY the robot reset pose differs.
+
+    Reset pose = gripper open, EE ~10 cm above the gear (found by the scripted grasp test).
+    """
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.robot = self.scene.robot.replace(
+            init_state=ArticulationCfg.InitialStateCfg(
+                pos=(0.0, 0.0, 0.0),
+                joint_pos={
+                    "shoulder_pan_joint": -0.146,
+                    "shoulder_lift_joint": -0.895,
+                    "elbow_joint": 0.659,
+                    "wrist_1_joint": -1.335,
+                    "wrist_2_joint": -1.571,
+                    "wrist_3_joint": 0.0,
+                    "finger_joint": 0.0,
+                    "right_outer_knuckle_joint": 0.0,
+                    "right_inner_finger_joint": 0.0,
+                    "right_inner_finger_knuckle_joint": 0.0,
+                    "left_inner_finger_knuckle_joint": 0.0,
+                    "left_inner_finger_joint": 0.0,
+                },
+            )
+        )

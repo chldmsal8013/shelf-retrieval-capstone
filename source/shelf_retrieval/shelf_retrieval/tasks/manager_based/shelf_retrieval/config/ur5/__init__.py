@@ -11,3 +11,14 @@ gym.register(
         "rsl_rl_cfg_entry_point": "shelf_retrieval.tasks.manager_based.shelf_retrieval.agents.rsl_rl_ppo_cfg:PPORunnerCfg",
     },
 )
+
+
+gym.register(
+    id="Isaac-ShelfRetrieval-Pregrasp-UR5-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.joint_pos_env_cfg:UR5ShelfRetrievalPregraspEnvCfg",
+        "rsl_rl_cfg_entry_point": "shelf_retrieval.tasks.manager_based.shelf_retrieval.agents.rsl_rl_ppo_cfg:PPORunnerCfg",
+    },
+)
