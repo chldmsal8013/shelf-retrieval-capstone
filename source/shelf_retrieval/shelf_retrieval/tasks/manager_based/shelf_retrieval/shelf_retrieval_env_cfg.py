@@ -60,7 +60,7 @@ class ObjectTableSceneCfg(InteractiveSceneCfg):
             mass_props=sim_utils.MassPropertiesCfg(mass=1000.0),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.5, 0.5, 0.5)),
         ),
-        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.76, 0.0, 0.61)),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.76, 0.0, 1.20)),
     )
 
     shelf_left_wall = AssetBaseCfg(
@@ -173,7 +173,7 @@ class EventCfg:
         func=mdp.reset_root_state_uniform,
         mode="reset",
         params={
-            "pose_range": {"x": (-0.03, 0.03), "y": (-0.12, 0.12), "z": (0.0, 0.0), "yaw": (-0.26, 0.26)},
+            "pose_range": {"x": (0.0, 0.0), "y": (0.0, 0.0), "z": (0.0, 0.0), "yaw": (0.0, 0.0)},
             "velocity_range": {},
             "asset_cfg": SceneEntityCfg("object"),
         },
@@ -186,17 +186,17 @@ class RewardsCfg:
 
     reaching_object = RewTerm(func=mdp.object_ee_distance, params={"std": 0.1}, weight=1.0)
 
-    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.31}, weight=15.0)
+    lifting_object = RewTerm(func=mdp.object_is_lifted, params={"minimal_height": 0.245}, weight=15.0)
 
     object_goal_tracking = RewTerm(
         func=mdp.object_goal_distance,
-        params={"std": 0.3, "minimal_height": 0.31, "command_name": "object_pose"},
+        params={"std": 0.3, "minimal_height": 0.245, "command_name": "object_pose"},
         weight=16.0,
     )
 
     object_goal_tracking_fine_grained = RewTerm(
         func=mdp.object_goal_distance,
-        params={"std": 0.05, "minimal_height": 0.31, "command_name": "object_pose"},
+        params={"std": 0.05, "minimal_height": 0.245, "command_name": "object_pose"},
         weight=5.0,
     )
 
@@ -217,7 +217,7 @@ class TerminationsCfg:
     time_out = DoneTerm(func=mdp.time_out, time_out=True)
 
     object_dropping = DoneTerm(
-        func=mdp.root_height_below_minimum, params={"minimum_height": 0.16, "asset_cfg": SceneEntityCfg("object")}
+        func=mdp.root_height_below_minimum, params={"minimum_height": 0.15, "asset_cfg": SceneEntityCfg("object")}
     )
 
 

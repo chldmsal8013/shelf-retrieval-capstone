@@ -19,7 +19,7 @@ UR5_ROBOTIQ_CFG = ArticulationCfg(
         usd_path="/home/choi/ur5_robotiq_2f85.usd",
         activate_contact_sensors=False,  # contact sensor 안 쓰므로 끔
         rigid_props=RigidBodyPropertiesCfg(
-            disable_gravity=False,
+            disable_gravity=True,
             max_depenetration_velocity=5.0,
         ),
         articulation_props=ArticulationRootPropertiesCfg(
@@ -63,8 +63,8 @@ UR5_ROBOTIQ_CFG = ArticulationCfg(
             joint_names_expr=["right_inner_finger_joint", "left_inner_finger_joint"],
             effort_limit_sim=50.0,
             velocity_limit_sim=10.0,
-            stiffness=0.2,
-            damping=0.001,
+            stiffness=2.0,
+            damping=0.01,
         ),
         "gripper_passive": ImplicitActuatorCfg(
             joint_names_expr=["right_outer_knuckle_joint",
@@ -125,7 +125,7 @@ class UR5ShelfRetrievalEnvCfg(ShelfRetrievalEnvCfg):
         # 물체는 씬에서 이미 우리가 정한 크기/위치(reset 범위)로 정의했으니, 여기선 spawn만 지정
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.75, 0.0, 0.26], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.75, 0.0, 0.20], rot=[1, 0, 0, 0]),
             spawn=sim_utils.UsdFileCfg(
                 usd_path=f"{FACTORY_ASSET_DIR}/factory_gear_medium.usd",
                 articulation_props=sim_utils.ArticulationRootPropertiesCfg(articulation_enabled=False),
