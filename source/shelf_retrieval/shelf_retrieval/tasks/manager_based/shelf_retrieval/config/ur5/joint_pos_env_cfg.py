@@ -172,3 +172,45 @@ class UR5ShelfRetrievalPregraspEnvCfg(UR5ShelfRetrievalEnvCfg):
                 },
             )
         )
+
+
+# ======================= reward v2 tasks =======================
+from isaaclab.managers import RewardTermCfg as RewTerm  # noqa: E402
+from isaaclab.managers import SceneEntityCfg  # noqa: E402
+
+
+def _apply_reward_v2(cfg):
+    """Reward v2: lifting only counts while the gear is held between the fingers."""
+    finger = SceneEntityCfg("robot", joint_names=["finger_joint"])
+    # the mid-air goal inherited from Lift is irrelevant here and rewards knocking the gear up
+    cfg.rewards.object_goal_tracking.weight = 0.0
+    cfg.rewards.object_goal_tracking_fine_grained.weight = 0.0
+    cfg.rewards.lifting_object = RewTerm(
+        func=mdp.object_lifted_and_grasped,
+        weight=15.0,
+        params={"minimal_height": 0.245, "finger_cfg": finger},
+    )
+    cfg.rewards.grasp_hold = RewTerm(func=mdp.object_grasped, weight=3.0, params={"finger_cfg": finger})
+    cfg.rewards.grasp_lift_progress = RewTerm(
+        func=mdp.object_grasp_lift_progress,
+        weight=5.0,
+        params={"rest_height": 0.195, "max_rise": 0.05, "finger_cfg": finger},
+    )
+
+
+@configclass
+class UR5ShelfRetrievalHomeV2EnvCfg(UR5ShelfRetrievalEnvCfg):
+    """Home reset + reward v2."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_reward_v2(self)
+
+
+@configclass
+class UR5ShelfRetrievalPregraspV2EnvCfg(UR5ShelfRetrievalPregraspEnvCfg):
+    """Pre-grasp reset + reward v2."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_reward_v2(self)

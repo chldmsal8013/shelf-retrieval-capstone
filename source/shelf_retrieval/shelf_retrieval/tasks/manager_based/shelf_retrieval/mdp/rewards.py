@@ -256,3 +256,68 @@ def object_ee_distance_target_aware(
     target_dist = torch.where(target_color == 0, object_dist, distractor_dist)
 
     return 1 - torch.tanh(target_dist / std)
+
+
+# ======================= reward v2: grasp-aware terms =======================
+def _gear_grasped(
+    env: ManagerBasedRLEnv,
+    finger_cfg: SceneEntityCfg,
+    object_cfg: SceneEntityCfg,
+    ee_frame_cfg: SceneEntityCfg,
+    finger_lo: float = 0.30,
+    finger_hi: float = 0.70,
+    max_dist: float = 0.07,
+    max_finger_speed: float = 2.0,
+) -> torch.Tensor:
+    """Bool mask: the object is between the closed fingers.
+
+    An empty gripper closes to 0.8; the finger joint stalls mid-range only when the object blocks it.
+    Requiring a stalled finger (low speed) and the object near the EE avoids rewarding a gripper that
+    merely sweeps through the mid-range while closing.
+    """
+    robot = env.scene[finger_cfg.name]
+    obj = env.scene[object_cfg.name]
+    ee = env.scene[ee_frame_cfg.name]
+    fid = robot.find_joints(["finger_joint"])[0][0]
+    fpos = robot.data.joint_pos[:, fid]
+    fvel = robot.data.joint_vel[:, fid]
+    dist = torch.norm(obj.data.root_pos_w - ee.data.target_pos_w[:, 0, :], dim=1)
+    return (fpos > finger_lo) & (fpos < finger_hi) & (fvel.abs() < max_finger_speed) & (dist < max_dist)
+
+
+def object_grasped(
+    env: ManagerBasedRLEnv,
+    finger_cfg: SceneEntityCfg,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    """1 while the object is held between the fingers."""
+    return _gear_grasped(env, finger_cfg, object_cfg, ee_frame_cfg).float()
+
+
+def object_lifted_and_grasped(
+    env: ManagerBasedRLEnv,
+    minimal_height: float,
+    finger_cfg: SceneEntityCfg,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    """1 only when the object is above minimal_height AND held (knocking it up earns nothing)."""
+    obj = env.scene[object_cfg.name]
+    grasped = _gear_grasped(env, finger_cfg, object_cfg, ee_frame_cfg)
+    return (grasped & (obj.data.root_pos_w[:, 2] > minimal_height)).float()
+
+
+def object_grasp_lift_progress(
+    env: ManagerBasedRLEnv,
+    rest_height: float,
+    max_rise: float,
+    finger_cfg: SceneEntityCfg,
+    object_cfg: SceneEntityCfg = SceneEntityCfg("object"),
+    ee_frame_cfg: SceneEntityCfg = SceneEntityCfg("ee_frame"),
+) -> torch.Tensor:
+    """While held: 0 at rest_height, 1 at rest_height + max_rise (dense signal for lifting)."""
+    obj = env.scene[object_cfg.name]
+    grasped = _gear_grasped(env, finger_cfg, object_cfg, ee_frame_cfg)
+    progress = torch.clamp((obj.data.root_pos_w[:, 2] - rest_height) / max_rise, 0.0, 1.0)
+    return grasped.float() * progress

@@ -84,13 +84,13 @@ def main():
             actions = torch.zeros(env.action_space.shape, device=dev)
             actions[:, :6] = torch.tensor(arm, device=dev)
             actions[:, 6] = grip
-            _, _, term, trunc, _ = env.step(actions)
+            _, rew, term, trunc, _ = env.step(actions)
 
             if t % 10 == 0:
                 gear = obj.data.root_pos_w[0]
                 ee = ee_frame.data.target_pos_w[0, 0]
                 print(
-                    f"t {t:3d} | grip {grip:+.0f} | gear z {gear[2].item():.4f} | "
+                    f"t {t:3d} | grip {grip:+.0f} | rew {rew[0].item():+7.2f} | gear z {gear[2].item():.4f} | "
                     f"EE {ee.cpu().numpy().round(3)} | gear-EE {(gear - ee).cpu().numpy().round(3)}",
                     flush=True,
                 )
@@ -105,6 +105,7 @@ def main():
                 print("JT   torque :", fmt(tq), flush=True)
                 fj = robot.find_joints(["finger_joint"])[0][0]
                 print("JT   finger_joint:", f"{robot.data.joint_pos[0, fj].item():.3f}", flush=True)
+                print("JT   finger_vel  :", f"{robot.data.joint_vel[0, fj].item():.3f}", flush=True)
             t = 0 if bool((term | trunc).any()) else t + 1
 
     env.close()

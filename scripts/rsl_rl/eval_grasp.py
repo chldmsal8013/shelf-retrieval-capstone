@@ -55,9 +55,10 @@ simulation_app = app_launcher.app
 import os as _os
 
 _EVAL = {"prev_len": None, "any": None, "held": None, "maxz": None, "fid": None,
-         "done": 0, "n_any": 0, "n_held": 0, "sum_maxz": 0.0}
+         "done": 0, "n_any": 0, "n_held": 0, "n_sus": 0, "sum_maxz": 0.0, "sus": None, "streak": None}
 _TARGET_EPISODES = int(_os.environ.get("EVAL_EPISODES", "100"))
 _LIFT_Z, _FINGER_LO, _FINGER_HI, _NEAR = 0.245, 0.30, 0.70, 0.07
+_SUSTAIN = int(_os.environ.get("EVAL_SUSTAIN", "10"))
 
 
 def _eval_hook(env):
@@ -72,6 +73,8 @@ def _eval_hook(env):
         st["any"] = torch.zeros(n, dtype=torch.bool, device=dev)
         st["held"] = torch.zeros(n, dtype=torch.bool, device=dev)
         st["maxz"] = torch.zeros(n, device=dev)
+        st["sus"] = torch.zeros(n, dtype=torch.bool, device=dev)
+        st["streak"] = torch.zeros(n, dtype=torch.long, device=dev)
         st["prev_len"] = e.episode_length_buf.clone()
         return
     cur = e.episode_length_buf
@@ -80,10 +83,13 @@ def _eval_hook(env):
     if reset.any():
         st["n_any"] += int(st["any"][reset].sum())
         st["n_held"] += int(st["held"][reset].sum())
+        st["n_sus"] += int(st["sus"][reset].sum())
         st["sum_maxz"] += float(st["maxz"][reset].sum())
         st["done"] += int(reset.sum())
         st["any"][reset] = False
         st["held"][reset] = False
+        st["sus"][reset] = False
+        st["streak"][reset] = 0
         st["maxz"][reset] = 0.0
     live = ~reset
     gz = obj.data.root_pos_w[:, 2]
@@ -93,6 +99,8 @@ def _eval_hook(env):
     held = lifted & (fj > _FINGER_LO) & (fj < _FINGER_HI) & (dist < _NEAR)
     st["any"] |= lifted & live
     st["held"] |= held & live
+    st["streak"] = torch.where(held & live, st["streak"] + 1, torch.zeros_like(st["streak"]))
+    st["sus"] |= (st["streak"] >= _SUSTAIN) & live
     st["maxz"] = torch.where(live, torch.maximum(st["maxz"], gz), st["maxz"])
     if st["done"] >= _TARGET_EPISODES:
         n = st["done"]
@@ -100,6 +108,7 @@ def _eval_hook(env):
         print(f"EVAL episodes: {n}", flush=True)
         print(f"EVAL lifted above {_LIFT_Z} (what the reward sees) : {st['n_any']} ({100 * st['n_any'] / n:.1f}%)", flush=True)
         print(f"EVAL lifted AND held between fingers              : {st['n_held']} ({100 * st['n_held'] / n:.1f}%)", flush=True)
+        print(f"EVAL held for >= {_SUSTAIN} consecutive steps          : {st['n_sus']} ({100 * st['n_sus'] / n:.1f}%)", flush=True)
         print(f"EVAL lifted but NOT held (knocked / thrown up)    : {st['n_any'] - st['n_held']}", flush=True)
         print(f"EVAL mean max gear z per episode                  : {st['sum_maxz'] / n:.4f}", flush=True)
         print("=" * 60, flush=True)
