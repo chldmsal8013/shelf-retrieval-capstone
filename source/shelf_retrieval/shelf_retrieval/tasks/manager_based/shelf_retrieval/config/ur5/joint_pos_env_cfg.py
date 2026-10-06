@@ -1,5 +1,5 @@
 from isaaclab.actuators import ImplicitActuatorCfg
-from isaaclab.assets import ArticulationCfg, RigidObjectCfg
+from isaaclab.assets import ArticulationCfg, AssetBaseCfg, RigidObjectCfg
 from isaaclab.sensors import FrameTransformerCfg
 from isaaclab.sensors.frame_transformer.frame_transformer_cfg import OffsetCfg
 from isaaclab.sim.schemas.schemas_cfg import RigidBodyPropertiesCfg, ArticulationRootPropertiesCfg
@@ -123,9 +123,20 @@ class UR5ShelfRetrievalEnvCfg(ShelfRetrievalEnvCfg):
         )
 
         # 물체는 씬에서 이미 우리가 정한 크기/위치(reset 범위)로 정의했으니, 여기선 spawn만 지정
+        self.scene.gear_base = AssetBaseCfg(
+            prim_path="{ENV_REGEX_NS}/GearBase",
+            spawn=sim_utils.UsdFileCfg(
+                usd_path=f"{FACTORY_ASSET_DIR}/factory_gear_base.usd",
+                articulation_props=sim_utils.ArticulationRootPropertiesCfg(articulation_enabled=False),
+                rigid_props=sim_utils.RigidBodyPropertiesCfg(kinematic_enabled=True),
+                collision_props=sim_utils.CollisionPropertiesCfg(),
+            ),
+            init_state=AssetBaseCfg.InitialStateCfg(pos=(0.73, 0.0, 0.20), rot=(1.0, 0.0, 0.0, 0.0)),
+        )
+
         self.scene.object = RigidObjectCfg(
             prim_path="{ENV_REGEX_NS}/Object",
-            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.75, 0.0, 0.20], rot=[1, 0, 0, 0]),
+            init_state=RigidObjectCfg.InitialStateCfg(pos=[0.7502, 0.0, 0.220], rot=[1, 0, 0, 0]),
             spawn=sim_utils.UsdFileCfg(
                 usd_path=f"{FACTORY_ASSET_DIR}/factory_gear_medium.usd",
                 articulation_props=sim_utils.ArticulationRootPropertiesCfg(articulation_enabled=False),
